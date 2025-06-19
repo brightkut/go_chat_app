@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Go Chat</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
+        h1 { color: #333; }
+        #chat-window {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+            background-color: #fff;
+        }
+        #message-input { width: calc(100% - 70px); padding: 8px; border: 1px solid #ccc; }
+        #send-button { width: 60px; padding: 8px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        .message { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Welcome to the Real-time Go Chat App!</h1>
+
+    <div id="chat-window"></div>
+    <input type="text" id="message-input" placeholder="Type your message...">
+    <button id="send-button">Send</button>
+
+    <script>
+        // Establish WebSocket connection
+        // Use 'ws://' for non-secure connections, 'wss://' for secure (HTTPS) connections
+        const ws = new WebSocket("ws://localhost:8088/ws"); // Connect to your Go server's WebSocket endpoint
+
+        const chatWindow = document.getElementById("chat-window");
+        const messageInput = document.getElementById("message-input");
+        const sendButton = document.getElementById("send-button");
+
+        // --- WebSocket Event Listeners ---
+
+        // Fired when the connection is successfully established
+        ws.onopen = (event) => {
+            console.log("WebSocket connection opened:", event);
+            chatWindow.innerHTML += '<div class="message"><em>Connected to chat server!</em></div>';
+        };
+
+        // Fired when a message is received from the server
+        ws.onmessage = (event) => {
+            const messageData = JSON.parse(event.data); // Parse the incoming JSON string
+            console.log("Received from server:", messageData);
+
+            const timestamp = new Date(messageData.timestamp).toLocaleTimeString();
+            chatWindow.innerHTML += `<div class="message"><strong>[${timestamp}] ${messageData.username}:</strong> ${messageData.content}</div>`;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        };
+
+        // Fired when an error occurs
+        ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            chatWindow.innerHTML += '<div class="message" style="color: red;"><em>WebSocket error occurred!</em></div>';
+        };
+
+        // Fired when the connection is closed
+        ws.onclose = (event) => {
+            console.log("WebSocket connection closed:", event);
+            chatWindow.innerHTML += '<div class="message"><em>Disconnected from chat server.</em></div>';
+        };
+
+        // --- UI Interaction ---
+
+        const sendMessage = () => {
+            const messageText = messageInput.value.trim();
+            if (messageText !== "") {
+                // Construct the message object to send as JSON
+                const message = {
+                    username: "AnonymousUser" + Math.floor(Math.random() * 100), // Simple random user for now
+                    content: messageText,
+                    // Timestamp will be added by the server for consistency
+                };
+                ws.send(JSON.stringify(message)); // Stringify the object to JSON and send
+
+                // Display your own message instantly (optional, server will echo back anyway)
+                // You can remove this or keep it for immediate feedback before server echo
+                // chatWindow.innerHTML += `<div class="message"><strong>You:</strong> ${messageText}</div>`;
+                messageInput.value = "";
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        };
+
+        sendButton.addEventListener("click", sendMessage);
+
+        messageInput.addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+
+    </script>
+</body>
+</html>
